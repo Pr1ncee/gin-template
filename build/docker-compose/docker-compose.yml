@@ -1,0 +1,26 @@
+name: gin-box
+
+services:
+  postgres:
+    image: postgres:15.1-alpine3.16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: gin-box
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+  core:
+    image: gin-box
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - postgres
+
+volumes:
+  postgres:
