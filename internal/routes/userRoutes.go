@@ -3,14 +3,14 @@ package routes
 import (
 	"GinBox/internal/handlers"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // UserRoutes sets up all user-related routes
 func UserRoutes(
 	router *gin.RouterGroup,
 	userHandler *handlers.UserHandler,
-	logger *log.Logger,
+	logger *zap.Logger,
 ) {
 	users := router.Group("/users")
 

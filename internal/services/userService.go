@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgtype"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
@@ -29,17 +29,17 @@ type IUserService interface {
 
 type UserService struct {
 	queries  *db.Queries
-	logger   *log.Logger
+	logger   *zap.Logger
 	userRepo repositories.IUserRepository
 	cfg      config.Config
 }
 
-func NewUserService(queries *db.Queries, logger *log.Logger, cfg config.Config, userRepo repositories.IUserRepository) *UserService {
+func NewUserService(queries *db.Queries, logger *zap.Logger, cfg config.Config, userRepo repositories.IUserRepository) *UserService {
 	return &UserService{queries: queries, logger: logger, cfg: cfg, userRepo: userRepo}
 }
 
 func (u *UserService) CreateUser(ctx context.Context, data requests.CreateUserRequest) (db.User, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), bcrypt.DefaultCost) // TODO move to env vars
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.Password), u.cfg.App.PasswordCost)
 
 	phoneNumber := pgtype.Text{}
 	if data.PhoneNumber != "" {
@@ -52,11 +52,12 @@ func (u *UserService) CreateUser(ctx context.Context, data requests.CreateUserRe
 		Email:       data.Email,
 		Password:    hashedPassword,
 		PhoneNumber: phoneNumber,
-		Role:        utils.ParseUserRole(data.Role),
+		Role:        utils.ParseUserRole(data.Role, u.logger),
 	}
 
 	createdUser, err := u.userRepo.CreateUser(ctx, user)
 	if err != nil {
+		u.logger.Error("Failed to create user", zap.Error(err))
 		return createdUser, err
 	}
 	createdUser.Password = nil
@@ -81,10 +82,13 @@ func (u *UserService) GetUser(ctx context.Context, id int32) (db.GetUserByIDRow,
 func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.UpdateUserRequest) (db.User, int, error) {
 	exists, err := u.userRepo.CheckUserExists(ctx, id)
 	if err != nil {
+		u.logger.Error("Failed to check user", zap.Error(err))
 		return db.User{}, http.StatusInternalServerError, err
 	}
 	if !exists {
-		return db.User{}, http.StatusNotFound, errors.New("user not found")
+		errMsg := "user not found"
+		u.logger.Warn(errMsg)
+		return db.User{}, http.StatusNotFound, errors.New(errMsg)
 	}
 
 	params := db.UpdateUserPartialParams{
@@ -106,22 +110,26 @@ func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.Up
 	if data.CurrentPassword != "" && data.NewPassword != "" {
 		user, err := u.userRepo.GetUserWithPasswordById(ctx, params.ID) // TODO Move to Auth service
 		if err != nil {
+			u.logger.Error("Failed to get user with password", zap.Error(err))
 			return db.User{}, http.StatusInternalServerError, err
 		}
 		errPass := bcrypt.CompareHashAndPassword(user.Password, []byte(data.CurrentPassword))
 		if errPass != nil {
-			return db.User{}, http.StatusForbidden, errors.New("current password doesn't match")
+			errMsg := "current password doesn't match"
+			u.logger.Error(errMsg)
+			return db.User{}, http.StatusForbidden, errors.New(errMsg)
 		}
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(data.NewPassword), bcrypt.DefaultCost)
 		params.Password = hashedPassword
 	}
 	if data.Role != "" {
-		role := utils.ParseUserRole(data.Role)
+		role := utils.ParseUserRole(data.Role, u.logger)
 		params.Role = db.NullUserRole{UserRole: role, Valid: true}
 	}
 
 	updatedUser, err := u.userRepo.UpdateUserPartial(ctx, params)
 	if err != nil {
+		u.logger.Error("Failed to update user", zap.Error(err))
 		return db.User{}, http.StatusInternalServerError, err
 	}
 
@@ -132,14 +140,18 @@ func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.Up
 func (u *UserService) DeleteUser(ctx context.Context, id int32) (int, error) {
 	exists, err := u.userRepo.CheckUserExists(ctx, id)
 	if err != nil {
+		u.logger.Error("Failed to check user", zap.Error(err))
 		return http.StatusInternalServerError, err
 	}
 	if !exists {
-		return http.StatusNotFound, errors.New("user not found")
+		errMsg := "user not found"
+		u.logger.Warn(errMsg)
+		return http.StatusNotFound, errors.New(errMsg)
 	}
 
 	err = u.userRepo.DeleteUserById(ctx, id)
 	if err != nil {
+		u.logger.Error("Failed to delete user", zap.Error(err))
 		return http.StatusInternalServerError, err
 	}
 	return http.StatusAccepted, nil
@@ -152,7 +164,9 @@ func (u *UserService) ExportUsers(ctx context.Context, args db.ListUsersParams) 
 		Column1: args.Column1,
 		Column2: args.Column2,
 	})
+	u.logger.Info("Got users to export", zap.Int("numOfUsers", len(users)))
 	if err != nil {
+		u.logger.Error("Failed to list users", zap.Error(err))
 		return bytes.Buffer{}, "", http.StatusInternalServerError, err
 	}
 
@@ -161,6 +175,7 @@ func (u *UserService) ExportUsers(ctx context.Context, args db.ListUsersParams) 
 
 	header := []string{"ID", "First Name", "Last Name", "Email", "Phone Number", "Role", "Created At", "Updated At"}
 	if err := writer.Write(header); err != nil {
+		u.logger.Error("Failed to write header", zap.Error(err))
 		return bytes.Buffer{}, "", http.StatusInternalServerError, err
 	}
 
@@ -172,22 +187,28 @@ func (u *UserService) ExportUsers(ctx context.Context, args db.ListUsersParams) 
 			user.Email,
 			user.PhoneNumber.String,
 			string(user.Role),
-			utils.TimestamptzToString(user.CreatedAt, "2006-01-02 15:04:05"),
-			utils.TimestamptzToString(user.UpdatedAt, "2006-01-02 15:04:05"),
+			utils.TimestamptzToString(user.CreatedAt, "2006-01-02 15:04:05", u.logger),
+			utils.TimestamptzToString(user.UpdatedAt, "2006-01-02 15:04:05", u.logger),
 		}
 
 		if err := writer.Write(record); err != nil {
+			u.logger.Error("Failed to write record", zap.Error(err))
 			return bytes.Buffer{}, "", http.StatusInternalServerError, err
 		}
 	}
 
 	writer.Flush()
 	if err := writer.Error(); err != nil {
+		u.logger.Error("Failed to flush record", zap.Error(err))
 		return bytes.Buffer{}, "", http.StatusInternalServerError, err
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("users_export_%s.csv", timestamp)
+	u.logger.Info(
+		"Exporting users to csv",
+		zap.String("filename", filename),
+		zap.Int("fileSize", len(buf.Bytes())))
 
 	return buf, filename, http.StatusOK, nil
 }

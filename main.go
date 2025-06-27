@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
@@ -35,22 +36,23 @@ import (
 func main() {
 	cfg, err := config.LoadConfigWithFile("./", ".env")
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Fatalf("failed to load config %v", err)
 	}
 	runtime.GOMAXPROCS(cfg.App.MaxProcs)
 
 	logger := setupLogger(cfg)
-	logger.Info("Starting Gin Box API server...")
-	logger.Infof("Environment: %s", cfg.App.Mode)
-	logger.Infof("Max processes: %d", cfg.App.MaxProcs)
+	logger.Info(
+		"Starting Gin Box API server...",
+		zap.String("Environment", cfg.App.Mode),
+		zap.Int("Max processes", cfg.App.MaxProcs))
 
 	gin.SetMode(cfg.App.Mode)
 
 	ctx := context.Background()
-	conn := db.SetUpDBConn(ctx, cfg.Postgres.ConnString)
+	conn := db.SetUpDBConn(ctx, cfg.Postgres.ConnString, logger)
 	defer func(dbConn *pgx.Conn, context context.Context) {
 		if err := dbConn.Close(context); err != nil {
-			logger.Errorf("Failed to close database connection: %v", err)
+			logger.Error("Failed to close database connection", zap.Error(err))
 		} else {
 			logger.Info("Database connection closed successfully")
 		}
@@ -87,11 +89,11 @@ func main() {
 	}
 
 	go func() {
-		logger.Infof("Server starting on port %d", cfg.App.Port)
-		logger.Infof("Swagger documentation available at: http://localhost:%d/swagger/index.html", cfg.App.Port)
+		logger.Info(fmt.Sprintf("Server starting on port %d", cfg.App.Port))
+		logger.Info(fmt.Sprintf("Swagger documentation available at: http://localhost:%d/swagger/index.html", cfg.App.Port))
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatalf("Failed to start server: %v", err)
+			logger.Fatal("Failed to start server", zap.Error(err))
 		}
 	}()
 
@@ -101,7 +103,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	sig := <-quit
-	logger.Infof("Received signal: %v. Shutting down server...", sig)
+	logger.Info(fmt.Sprintf("Received signal: %v. Shutting down server...", sig))
 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -109,7 +111,7 @@ func main() {
 	server.SetKeepAlivesEnabled(false)
 
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Errorf("Server forced to shutdown: %v", err)
+		logger.Error("Server forced to shutdown", zap.Error(err))
 		os.Exit(1)
 	}
 

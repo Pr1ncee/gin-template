@@ -7,22 +7,22 @@ import (
 	"GinBox/internal/services"
 	"GinBox/internal/utils"
 	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 type UserHandler struct {
 	*BaseHandler
-	userService services.IUserService // TODO MUST USE SERVICE NOT REPOSITORY
-	logger      *log.Logger
+	userService services.IUserService
+	logger      *zap.Logger
 	timeout     time.Duration
 }
 
-func NewUserHandler(userService services.IUserService, logger *log.Logger, timeout time.Duration) *UserHandler {
+func NewUserHandler(userService services.IUserService, logger *zap.Logger, timeout time.Duration) *UserHandler {
 	return &UserHandler{
 		BaseHandler: NewBaseHandler(logger, timeout),
 		userService: userService,
@@ -79,7 +79,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
 
-	role := utils.ParseUserRole(c.DefaultQuery("role", ""))
+	role := utils.ParseUserRole(c.DefaultQuery("role", ""), h.logger)
 	query := c.DefaultQuery("searchTerm", "")
 
 	page, err := strconv.Atoi(pageStr)
@@ -234,7 +234,7 @@ func (h *UserHandler) ExportUsers(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "10")
 
-	role := utils.ParseUserRole(c.DefaultQuery("role", ""))
+	role := utils.ParseUserRole(c.DefaultQuery("role", ""), h.logger)
 	query := c.DefaultQuery("searchTerm", "")
 
 	page, err := strconv.Atoi(pageStr)

@@ -4,17 +4,17 @@ import (
 	"GinBox/internal/handlers/responses"
 	"context"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
 
 type BaseHandler struct {
-	logger  *logrus.Logger
+	logger  *zap.Logger
 	timeout time.Duration
 }
 
-func NewBaseHandler(logger *logrus.Logger, timeout time.Duration) *BaseHandler {
+func NewBaseHandler(logger *zap.Logger, timeout time.Duration) *BaseHandler {
 	return &BaseHandler{
 		logger:  logger,
 		timeout: timeout,
@@ -23,7 +23,7 @@ func NewBaseHandler(logger *logrus.Logger, timeout time.Duration) *BaseHandler {
 
 // SendError sends an error response
 func (h *BaseHandler) SendError(c *gin.Context, statusCode int, message string, err error) {
-	h.logger.WithError(err).Error(message)
+	h.logger.Error(message, zap.Error(err))
 	c.JSON(statusCode, responses.ErrorResponse{
 		Error:   http.StatusText(statusCode),
 		Code:    statusCode,

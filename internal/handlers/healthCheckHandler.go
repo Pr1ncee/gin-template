@@ -2,15 +2,15 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"net/http"
 )
 
 type HealthCheckHandler struct {
-	logger *log.Logger
+	logger *zap.Logger
 }
 
-func NewHealthCheckHandler(logger *log.Logger) *HealthCheckHandler {
+func NewHealthCheckHandler(logger *zap.Logger) *HealthCheckHandler {
 	return &HealthCheckHandler{logger: logger}
 }
 

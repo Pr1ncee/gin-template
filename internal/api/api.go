@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
@@ -16,10 +16,10 @@ import (
 type ApiGroup struct {
 	handler *handlers.UserHandler
 	ApiV1   *v1.ApiV1
-	logger  *log.Logger
+	logger  *zap.Logger
 }
 
-func NewApiGroup(handler *handlers.UserHandler, apiV1 *v1.ApiV1, logger *log.Logger) *ApiGroup {
+func NewApiGroup(handler *handlers.UserHandler, apiV1 *v1.ApiV1, logger *zap.Logger) *ApiGroup {
 	return &ApiGroup{handler: handler, ApiV1: apiV1, logger: logger}
 }
 
@@ -34,7 +34,7 @@ func (a *ApiGroup) InitRouterGroups(router *gin.Engine) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	router.NoRoute(func(c *gin.Context) {
-		a.logger.Warnf("Route not found: %s %s from %s", c.Request.Method, c.Request.URL.Path, c.ClientIP())
+		a.logger.Warn(fmt.Sprintf("Route not found: %s %s from %s", c.Request.Method, c.Request.URL.Path, c.ClientIP()))
 		c.JSON(http.StatusNotFound, gin.H{
 			"error":     "Route not found",
 			"code":      404,

@@ -3,33 +3,40 @@ package main
 import (
 	"GinBox/config"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"os"
-	"time"
 )
 
-func setupLogger(cfg *config.Config) *logrus.Logger {
-	logger := logrus.New()
-	logger.SetOutput(os.Stdout)
-	logger.SetLevel(cfg.Log.Level)
+func setupLogger(cfg *config.Config) *zap.Logger {
+	encoderConfig := zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		FunctionKey:    zapcore.OmitKey,
+		MessageKey:     "message",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
 
-	if cfg.App.Mode == gin.ReleaseMode {
-		logger.SetFormatter(&logrus.JSONFormatter{
-			TimestampFormat: time.RFC3339,
-			FieldMap: logrus.FieldMap{
-				logrus.FieldKeyTime:  "timestamp",
-				logrus.FieldKeyLevel: "level",
-				logrus.FieldKeyMsg:   "message",
-				logrus.FieldKeyFunc:  "caller",
-			},
-		})
-	} else {
-		logger.SetFormatter(&logrus.TextFormatter{
-			FullTimestamp:   true,
-			TimestampFormat: "2006-01-02 15:04:05",
-			ForceColors:     true,
-			PadLevelText:    true,
-		})
+	core := zapcore.NewCore(
+		zapcore.NewJSONEncoder(encoderConfig),
+		zapcore.AddSync(os.Stdout),
+		cfg.Log.Level,
+	)
+
+	logger := zap.New(core, zap.AddCaller())
+
+	if cfg.App.Mode != gin.ReleaseMode {
+		logger = logger.WithOptions(
+			zap.Development(),
+			zap.AddStacktrace(zapcore.ErrorLevel),
+		)
 	}
 
 	return logger

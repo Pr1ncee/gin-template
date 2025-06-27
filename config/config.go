@@ -19,15 +19,16 @@ APP_WRITE_TIMEOUT=30s
 APP_IDLE_TIMEOUT=30s
 APP_REQUEST_TIMEOUT=30s
 APP_MAX_PROCS=1000
+APP_PASSWORD_COST=10 # Min Cost is 4, Max Cost is 31
 
 POSTGRES_CONN_STRING=postgres://admin:admin@localhost:5432/gin-box
 
-LOG_LEVEL=4 # 6 = trace, 5 = debug, 4 = info, 3 = warn, 2 = error, 1 = fatal, 0 = panic
+LOG_LEVEL=0 # 5 = fatal, 4 = panic, 3 = dpanic, 2 = error, 1 = warn, 0 = info, -1 = debug
 */
 package config
 
 import (
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap/zapcore"
 	"time"
 
 	"github.com/spf13/viper"
@@ -47,6 +48,7 @@ type AppConfig struct {
 	IdleTimeout    time.Duration `mapstructure:"idle_timeout"`
 	RequestTimeout time.Duration `mapstructure:"request_timeout"`
 	MaxProcs       int           `mapstructure:"max_procs"`
+	PasswordCost   int           `mapstructure:"password_cost"`
 }
 
 type PostgresConfig struct {
@@ -54,7 +56,7 @@ type PostgresConfig struct {
 }
 
 type LogConfig struct {
-	Level log.Level `mapstructure:"level"`
+	Level zapcore.Level `mapstructure:"level"`
 }
 
 // LoadConfigWithFile loads the configuration from a YAML file located at the given path with the provided filename.
@@ -66,7 +68,7 @@ func LoadConfigWithFile(path, filename string) (*Config, error) {
 
 	viper.SetDefault("APP_PORT", 8080)
 	viper.SetDefault("APP_TIMEOUT", "30s")
-	viper.SetDefault("LOG_LEVEL", log.InfoLevel)
+	viper.SetDefault("LOG_LEVEL", zapcore.InfoLevel)
 
 	viper.AutomaticEnv()
 
@@ -81,12 +83,13 @@ func LoadConfigWithFile(path, filename string) (*Config, error) {
 	cfg.App.WriteTimeout = viper.GetDuration("APP_WRITE_TIMEOUT")
 	cfg.App.IdleTimeout = viper.GetDuration("APP_IDLE_TIMEOUT")
 	cfg.App.RequestTimeout = viper.GetDuration("APP_REQUEST_TIMEOUT")
+	cfg.App.PasswordCost = viper.GetInt("APP_PASSWORD_COST")
 
 	cfg.App.MaxProcs = viper.GetInt("APP_MAX_PROCS")
 
 	cfg.Postgres.ConnString = viper.GetString("POSTGRES_CONN_STRING")
 
-	cfg.Log.Level = log.Level(viper.GetInt("LOG_LEVEL"))
+	cfg.Log.Level = zapcore.Level(viper.GetInt("LOG_LEVEL"))
 
 	return &cfg, nil
 }

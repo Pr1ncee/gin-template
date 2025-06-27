@@ -1,8 +1,11 @@
 package utils
 
-import db "GinBox/internal/postgresql"
+import (
+	db "GinBox/internal/postgresql"
+	"go.uber.org/zap"
+)
 
-func ParseUserRole(role string) db.UserRole {
+func ParseUserRole(role string, logger *zap.Logger) db.UserRole {
 	// TODO think about this function, whether it's needed or not, pass logger here
 	switch role {
 	case "Admin":
@@ -10,6 +13,7 @@ func ParseUserRole(role string) db.UserRole {
 	case "User":
 		return db.UserRoleUser
 	default:
+		logger.Warn("unknown role", zap.String("role", role))
 		return ""
 	}
 }

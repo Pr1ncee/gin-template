@@ -3,13 +3,13 @@ package internal
 import (
 	"context"
 	"github.com/jackc/pgx/v5"
-	"log"
+	"go.uber.org/zap"
 )
 
-func SetUpDBConn(ctx context.Context, connString string) *pgx.Conn {
+func SetUpDBConn(ctx context.Context, connString string, logger *zap.Logger) *pgx.Conn {
 	conn, err := pgx.Connect(ctx, connString)
 	if err != nil {
-		log.Fatalf("Unable to connection to database: %v\n", err)
+		logger.Fatal("Error connecting to database", zap.Error(err))
 	}
 	return conn
 }

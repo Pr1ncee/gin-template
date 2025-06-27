@@ -4,16 +4,16 @@ import (
 	"GinBox/internal/handlers"
 	"GinBox/internal/routes"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type ApiV1 struct {
 	healthCheckHandler *handlers.HealthCheckHandler
 	userHandler        *handlers.UserHandler
-	logger             *log.Logger
+	logger             *zap.Logger
 }
 
-func NewApiV1(userHandler *handlers.UserHandler, healthCheckHandler *handlers.HealthCheckHandler, logger *log.Logger) *ApiV1 {
+func NewApiV1(userHandler *handlers.UserHandler, healthCheckHandler *handlers.HealthCheckHandler, logger *zap.Logger) *ApiV1 {
 	return &ApiV1{userHandler: userHandler, healthCheckHandler: healthCheckHandler, logger: logger}
 }
 
