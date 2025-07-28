@@ -2,32 +2,32 @@ package routes
 
 import (
 	"GinBox/internal/handlers"
+	"GinBox/internal/middlewares"
+	db "GinBox/internal/postgresql"
+	"GinBox/internal/services"
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 // UserRoutes sets up all user-related routes
 func UserRoutes(
 	router *gin.RouterGroup,
 	userHandler *handlers.UserHandler,
-	logger *zap.Logger,
+	authService services.IAuthService,
 ) {
 	users := router.Group("/users")
 
-	// Apply middleware
-	//users.Use(middleware.RequestLogger(logger))
-	//users.Use(middleware.CORS())
-	//users.Use(middleware.RateLimiter(100, time.Minute)) // 100 requests per minute
+	users.POST("/login", userHandler.Login)
+	users.POST("/refresh", userHandler.RefreshToken)
 
 	// Routes that require authentication
 	authenticated := users.Group("")
-	//authenticated.Use(middleware.AuthRequired()) // You'll need to implement this
+	authenticated.Use(middlewares.AuthMiddleware(authService))
 	{
-		authenticated.POST("", userHandler.CreateUser)        // POST /api/v1/users
-		authenticated.GET("", userHandler.ListUsers)          // GET /api/v1/users?page=1&limit=10&role=Admin&q=test@gmail.com
-		authenticated.GET("/:id", userHandler.GetUserByID)    // GET /api/v1/users/123
-		authenticated.PUT("/:id", userHandler.UpdateUser)     // PUT /api/v1/users/123
-		authenticated.DELETE("/:id", userHandler.DeleteUser)  // DELETE /api/v1/users/123
-		authenticated.GET("/export", userHandler.ExportUsers) // GET /api/v1/users/export?page=1&limit=10&role=Admin&q=test@gmail.com
+		authenticated.POST("", middlewares.RequireRole([]db.UserRole{db.UserRoleAdmin}), userHandler.CreateUser)                         // POST /api/v1/users
+		authenticated.GET("", middlewares.RequireRole([]db.UserRole{db.UserRoleUser, db.UserRoleAdmin}), userHandler.ListUsers)          // GET /api/v1/users?page=1&limit=10&role=Admin&q=test@gmail.com
+		authenticated.GET("/:id", middlewares.RequireRole([]db.UserRole{db.UserRoleUser, db.UserRoleAdmin}), userHandler.GetUserByID)    // GET /api/v1/users/123
+		authenticated.PUT("/:id", middlewares.RequireRole([]db.UserRole{db.UserRoleAdmin}), userHandler.UpdateUser)                      // PUT /api/v1/users/123
+		authenticated.DELETE("/:id", middlewares.RequireRole([]db.UserRole{db.UserRoleAdmin}), userHandler.DeleteUser)                   // DELETE /api/v1/users/123
+		authenticated.GET("/export", middlewares.RequireRole([]db.UserRole{db.UserRoleUser, db.UserRoleAdmin}), userHandler.ExportUsers) // GET /api/v1/users/export?page=1&limit=10&role=Admin&q=test@gmail.com
 	}
 }

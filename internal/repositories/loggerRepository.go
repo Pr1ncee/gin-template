@@ -1,4 +1,4 @@
-package main
+package repositories
 
 import (
 	"GinBox/config"
@@ -8,7 +8,15 @@ import (
 	"os"
 )
 
-func setupLogger(cfg *config.Config) *zap.Logger {
+type AppLogger struct {
+	cfg *config.Config
+}
+
+func NewAppLogger(cfg *config.Config) *AppLogger {
+	return &AppLogger{cfg: cfg}
+}
+
+func (a *AppLogger) SetUpLogger(cfg *config.Config) *zap.Logger {
 	encoderConfig := zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",

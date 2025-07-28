@@ -33,6 +33,11 @@ import (
 
 // @host      localhost:8080
 // @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter the token like: **Bearer YOUR_TOKEN_HERE**
 func main() {
 	cfg, err := config.LoadConfigWithFile("./", ".env")
 	if err != nil {
@@ -40,7 +45,8 @@ func main() {
 	}
 	runtime.GOMAXPROCS(cfg.App.MaxProcs)
 
-	logger := setupLogger(cfg)
+	initLogger := repositories.NewAppLogger(cfg)
+	logger := initLogger.SetUpLogger(cfg)
 	logger.Info(
 		"Starting Gin Box API server...",
 		zap.String("Environment", cfg.App.Mode),
@@ -58,12 +64,15 @@ func main() {
 		}
 	}(conn, ctx)
 	queries := db.New(conn)
-	logger.Info("Database connection established successfully")
+
+	redisRepo := repositories.NewRedisRepository(cfg)
+	logger.Info("Database connections established successfully")
 
 	userRepo := repositories.NewUserRepository(queries, logger)
 	logger.Info("Repositories initialized")
 
-	userService := services.NewUserService(queries, logger, *cfg, userRepo)
+	authService := services.NewAuthService(*cfg, logger)
+	userService := services.NewUserService(queries, logger, *cfg, userRepo, *authService)
 	logger.Info("Services initialized")
 
 	healthCheckHandler := handlers.NewHealthCheckHandler(logger)
@@ -72,10 +81,9 @@ func main() {
 	logger.Info("Handlers initialized")
 
 	router := gin.New()
-	apiV1 := v1.NewApiV1(userHandler, healthCheckHandler, logger)
+	apiV1 := v1.NewApiV1(userHandler, authService, healthCheckHandler, redisRepo, cfg, logger)
 	logger.Info("ApiV1 initialized")
-	apiGroup := api.NewApiGroup(userHandler, apiV1, logger)
-	logger.Info("ApiGroup initialized")
+	apiGroup := api.NewApiGroup(userHandler, apiV1, cfg, logger)
 	apiGroup.InitRouterGroups(router)
 	logger.Info("Routes initialized")
 

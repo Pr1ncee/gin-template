@@ -1,5 +1,14 @@
 package requests
 
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+type LoginRequest struct {
+	ID       int32  `json:"id"`
+	Password string `json:"password"`
+}
+
 type CreateUserRequest struct {
 	FirstName   string `json:"first_name" binding:"required,min=2,max=255"`
 	LastName    string `json:"last_name" binding:"required,min=2,max=255"`

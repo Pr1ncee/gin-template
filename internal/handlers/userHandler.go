@@ -31,6 +31,71 @@ func NewUserHandler(userService services.IUserService, logger *zap.Logger, timeo
 	}
 }
 
+// RefreshToken godoc
+// @Summary Refresh user's token
+// @Description Refresh user's token and return a new access token in the response
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body requests.RefreshTokenRequest true "Refresh token"
+// @Success 201 {object} responses.SuccessResponse
+// @Failure 400 {object} responses.ErrorResponse
+// @Failure 409 {object} responses.ErrorResponse
+// @Failure 500 {object} responses.ErrorResponse
+// @Router /users/refresh [post]
+func (h *UserHandler) RefreshToken(c *gin.Context) {
+	var req requests.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.SendError(c, http.StatusBadRequest, "Invalid request body", err)
+		return
+	}
+
+	ctx, cancel := h.GetContextWithTimeout()
+	defer cancel()
+
+	accessToken, err := h.userService.RefreshToken(ctx, req.RefreshToken)
+	if err != nil {
+		h.SendError(c, http.StatusUnauthorized, "Error refreshing token", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"access_token": accessToken})
+}
+
+// Login godoc
+// @Summary Log a user in
+// @Description Login a user and return a pair of access and refresh token in the response
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body requests.LoginRequest true "User information"
+// @Success 201 {object} responses.SuccessResponse
+// @Failure 400 {object} responses.ErrorResponse
+// @Failure 409 {object} responses.ErrorResponse
+// @Failure 500 {object} responses.ErrorResponse
+// @Router /users/login [post]
+func (h *UserHandler) Login(c *gin.Context) {
+	var req requests.LoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.SendError(c, http.StatusBadRequest, "Invalid request body", err)
+		return
+	}
+
+	ctx, cancel := h.GetContextWithTimeout()
+	defer cancel()
+
+	accessToken, refreshToken, err := h.userService.Login(ctx, req)
+	if err != nil {
+		h.SendError(c, http.StatusUnauthorized, "Failed to login", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
+}
+
 // CreateUser godoc
 // @Summary Create a new user
 // @Description Create a new user and return user object in the response
@@ -42,6 +107,7 @@ func NewUserHandler(userService services.IUserService, logger *zap.Logger, timeo
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 409 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
+// @Security BearerAuth
 // @Router /users [post]
 func (h *UserHandler) CreateUser(c *gin.Context) {
 	var req requests.CreateUserRequest
@@ -74,6 +140,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Success 200 {object} responses.PaginationResponse
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
+// @Security BearerAuth
 // @Router /users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
@@ -128,6 +195,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
+// @Security BearerAuth
 // @Router /users/{id} [get]
 func (h *UserHandler) GetUserByID(c *gin.Context) {
 	idStr := c.Param("id")
@@ -161,6 +229,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
+// @Security BearerAuth
 // @Router /users/{id} [put]
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	idStr := c.Param("id")
@@ -179,9 +248,10 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	ctx, cancel := h.GetContextWithTimeout()
 	defer cancel()
 
-	updatedUser, statusCode, err := h.userService.UpdateUser(ctx, int32(id), req)
+	updatedUser, err := h.userService.UpdateUser(ctx, int32(id), req)
 	if err != nil {
-		h.SendError(c, statusCode, "Failed to update the user", err)
+		h.SendError(c, http.StatusInternalServerError, "Failed to update the user", err)
+		return
 	}
 	h.SendSuccess(c, http.StatusOK, updatedUser, "User updated successfully")
 }
@@ -196,6 +266,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
+// @Security BearerAuth
 // @Router /users/{id} [delete]
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	idStr := c.Param("id")
@@ -208,9 +279,9 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	ctx, cancel := h.GetContextWithTimeout()
 	defer cancel()
 
-	statusCode, err := h.userService.DeleteUser(ctx, int32(id))
+	err = h.userService.DeleteUser(ctx, int32(id))
 	if err != nil {
-		h.SendError(c, statusCode, "Failed to delete the user", err)
+		h.SendError(c, http.StatusInternalServerError, "Failed to delete the user", err)
 	}
 
 	h.SendSuccess(c, http.StatusOK, nil, "User deleted successfully")
@@ -229,6 +300,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 404 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
+// @Security BearerAuth
 // @Router /users/export [get]
 func (h *UserHandler) ExportUsers(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
@@ -253,14 +325,15 @@ func (h *UserHandler) ExportUsers(c *gin.Context) {
 	defer cancel()
 
 	offset := (page - 1) * limit
-	data, filename, statusCode, err := h.userService.ExportUsers(ctx, db.ListUsersParams{
+	data, filename, err := h.userService.ExportUsers(ctx, db.ListUsersParams{
 		Limit:   int32(limit),
 		Offset:  int32(offset),
 		Column1: string(role),
 		Column2: query,
 	})
 	if err != nil {
-		h.SendError(c, statusCode, "Failed to export users", err)
+		h.SendError(c, http.StatusInternalServerError, "Failed to export users", err)
+		return
 	}
 
 	c.Header("Content-Description", "File Transfer")

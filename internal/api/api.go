@@ -1,8 +1,11 @@
 package api
 
 import (
+	"GinBox/config"
 	v1 "GinBox/internal/api/v1"
+	"GinBox/internal/appErrors"
 	"GinBox/internal/handlers"
+	"GinBox/internal/middlewares"
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -16,17 +19,28 @@ import (
 type ApiGroup struct {
 	handler *handlers.UserHandler
 	ApiV1   *v1.ApiV1
+	cfg     *config.Config
 	logger  *zap.Logger
 }
 
-func NewApiGroup(handler *handlers.UserHandler, apiV1 *v1.ApiV1, logger *zap.Logger) *ApiGroup {
-	return &ApiGroup{handler: handler, ApiV1: apiV1, logger: logger}
+func NewApiGroup(handler *handlers.UserHandler, apiV1 *v1.ApiV1, cfg *config.Config, logger *zap.Logger) *ApiGroup {
+	return &ApiGroup{handler: handler, ApiV1: apiV1, cfg: cfg, logger: logger}
 }
 
 func (a *ApiGroup) InitRouterGroups(router *gin.Engine) {
+	requestLogger := middlewares.NewRequestLogger(a.logger)
+	corsDefaultConfig := cors.DefaultConfig()
+	corsDefaultConfig.AllowAllOrigins = false
+	corsDefaultConfig.AllowOrigins = a.cfg.App.Origins
+	corsDefaultConfig.AllowCredentials = true
+	corsDefaultConfig.AddAllowHeaders("Authorization")
+
+	rateLimiter := middlewares.NewRateLimiter(a.cfg)
+
+	router.Use(rateLimiter.Handle())
 	router.Use(cors.Default())
-	router.Use(gin.Recovery())
-	//router.Use(appErrors.HandleErr)  TODO HANDLE ERRORS HERE
+	router.Use(gin.Recovery(), requestLogger.Handle())
+	router.Use(appErrors.HandleErr)
 	api := router.Group("/api")
 	{
 		a.ApiV1.InitApiV1Groups(api)
