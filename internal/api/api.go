@@ -3,7 +3,6 @@ package api
 import (
 	"GinBox/config"
 	v1 "GinBox/internal/api/v1"
-	"GinBox/internal/appErrors"
 	"GinBox/internal/handlers"
 	"GinBox/internal/middlewares"
 	"fmt"
@@ -37,10 +36,12 @@ func (a *ApiGroup) InitRouterGroups(router *gin.Engine) {
 
 	rateLimiter := middlewares.NewRateLimiter(a.cfg)
 
+	errorMiddleware := middlewares.NewErrorHandlerMiddleware(a.logger)
+
 	router.Use(rateLimiter.Handle())
 	router.Use(cors.Default())
 	router.Use(gin.Recovery(), requestLogger.Handle())
-	router.Use(appErrors.HandleErr)
+	router.Use(errorMiddleware.Handle())
 	api := router.Group("/api")
 	{
 		a.ApiV1.InitApiV1Groups(api)

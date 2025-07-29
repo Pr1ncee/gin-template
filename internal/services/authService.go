@@ -8,7 +8,7 @@ package services
 
 import (
 	"GinBox/config"
-	"GinBox/internal/appErrors"
+	"GinBox/internal"
 	db "GinBox/internal/postgresql"
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
@@ -89,7 +89,7 @@ func (a *AuthService) ParseToken(tokenString string) (*JWTClaims, error) {
 
 	if !token.Valid {
 		a.logger.Error("Error parsing token", zap.Error(err))
-		return nil, appErrors.ErrInvalidToken
+		return nil, internal.ErrInvalidToken
 	}
 
 	a.logger.Info("Claims parsed", zap.Any("claims", claims))

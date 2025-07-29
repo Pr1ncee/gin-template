@@ -46,7 +46,7 @@ func (m *CacheMiddleware) Handle() gin.HandlerFunc {
 
 		cached, err := m.repo.Get(ctx, cacheKey)
 		if err == nil && cached != "" {
-			m.logger.Info("cache hit", zap.String("key", cacheKey))
+			m.logger.Info("Cache hit", zap.String("key", cacheKey))
 			c.Data(http.StatusOK, "application/json", []byte(cached))
 			c.Abort()
 			return
@@ -58,7 +58,7 @@ func (m *CacheMiddleware) Handle() gin.HandlerFunc {
 		c.Next()
 
 		if c.Writer.Status() >= http.StatusOK && c.Writer.Status() <= http.StatusIMUsed {
-			m.logger.Info("setting cache", zap.String("key", cacheKey))
+			m.logger.Info("Setting cache", zap.String("key", cacheKey))
 			_ = m.repo.Set(ctx, cacheKey, writer.Body.String(), int64(m.cfg.Redis.TTL.Seconds()))
 		}
 	}

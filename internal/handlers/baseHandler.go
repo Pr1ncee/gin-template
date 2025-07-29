@@ -10,7 +10,6 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"net/http"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func NewBaseHandler(logger *zap.Logger, timeout time.Duration) *BaseHandler {
 func (h *BaseHandler) SendError(c *gin.Context, statusCode int, message string, err error) {
 	h.logger.Error(message, zap.Error(err))
 	c.JSON(statusCode, responses.ErrorResponse{
-		Error:   http.StatusText(statusCode),
+		Error:   err.Error(),
 		Code:    statusCode,
 		Message: message,
 	})

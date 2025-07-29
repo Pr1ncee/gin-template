@@ -2,7 +2,7 @@ package services
 
 import (
 	"GinBox/config"
-	"GinBox/internal/appErrors"
+	"GinBox/internal"
 	"GinBox/internal/handlers/requests"
 	db "GinBox/internal/postgresql"
 	"GinBox/internal/repositories"
@@ -52,22 +52,22 @@ func (u *UserService) RefreshToken(ctx context.Context, refreshToken string) (st
 	claims, err := u.authService.ParseToken(refreshToken)
 	if err != nil {
 		u.logger.Error("Error parsing the token", zap.Error(err))
-		return "", appErrors.ErrInvalidToken
+		return "", internal.ErrInvalidToken
 	}
 	if claims.Subject != "refresh-token" {
 		u.logger.Error("The provided token is an access one. The token is insufficient")
-		return "", appErrors.ErrInsufficientTokenClaims
+		return "", internal.ErrInsufficientTokenClaims
 	}
 	user, err := u.GetUser(ctx, claims.UserID)
 	if err != nil {
 		u.logger.Error("User not found", zap.Error(err))
-		return "", appErrors.ErrUserNotFound
+		return "", internal.ErrUserNotFound
 	}
 
 	newRefreshToken, err := u.authService.GenerateAccessToken(UserClaims{UserID: user.ID, Email: user.Email, Role: user.Role})
 	if err != nil {
 		u.logger.Error("Error generating access token", zap.Error(err))
-		return "", appErrors.ErrFailedToGenerateAccessToken
+		return "", internal.ErrFailedToGenerateAccessToken
 	}
 	return newRefreshToken, nil
 }
@@ -77,24 +77,24 @@ func (u *UserService) Login(ctx context.Context, data requests.LoginRequest) (st
 	user, err := u.GetUserWithPasswordById(ctx, data.ID)
 	if err != nil {
 		u.logger.Warn("User not found", zap.Error(err))
-		return "", "", appErrors.ErrUserNotFound
+		return "", "", internal.ErrUserNotFound
 	}
 	errPass := u.authService.ValidatePassword(user.Password, []byte(data.Password))
 	if errPass != nil {
 		u.logger.Error("Password does not match", zap.Int32("user_id", data.ID))
-		return "", "", appErrors.ErrPasswordDoesNotMatch
+		return "", "", internal.ErrPasswordDoesNotMatch
 	}
 
 	userClaims := UserClaims{UserID: user.ID, Email: user.Email, Role: user.Role}
 	accessToken, err := u.authService.GenerateAccessToken(userClaims)
 	if err != nil {
 		u.logger.Warn("Failed to generate access token", zap.Error(err))
-		return "", "", appErrors.ErrFailedToGenerateAccessToken
+		return "", "", internal.ErrFailedToGenerateAccessToken
 	}
 	refreshToken, err := u.authService.GenerateRefreshToken(userClaims)
 	if err != nil {
 		u.logger.Warn("Failed to generate refresh token", zap.Error(err))
-		return "", "", appErrors.ErrFailedToGenerateRefreshToken
+		return "", "", internal.ErrFailedToGenerateRefreshToken
 	}
 	return accessToken, refreshToken, nil
 }
@@ -120,7 +120,7 @@ func (u *UserService) CreateUser(ctx context.Context, data requests.CreateUserRe
 	createdUser, err := u.userRepo.CreateUser(ctx, user)
 	if err != nil {
 		u.logger.Error("Failed to create user", zap.Error(err))
-		return createdUser, appErrors.ErrFailedToCreateUser
+		return createdUser, internal.ErrFailedToCreateUser
 	}
 	createdUser.Password = nil
 	return createdUser, nil
@@ -159,7 +159,7 @@ func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.Up
 	}
 	if !exists {
 		u.logger.Warn("User not found")
-		return db.User{}, appErrors.ErrUserNotFound
+		return db.User{}, internal.ErrUserNotFound
 	}
 
 	params := db.UpdateUserPartialParams{
@@ -187,7 +187,7 @@ func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.Up
 		errPass := u.authService.ValidatePassword(user.Password, []byte(data.NewPassword))
 		if errPass != nil {
 			u.logger.Error("Current password doesn't match")
-			return db.User{}, appErrors.ErrPasswordDoesNotMatch
+			return db.User{}, internal.ErrPasswordDoesNotMatch
 		}
 		hashedPassword, err := u.authService.GeneratePassword([]byte(data.NewPassword))
 		if err != nil {
@@ -220,7 +220,7 @@ func (u *UserService) DeleteUser(ctx context.Context, id int32) error {
 	}
 	if !exists {
 		u.logger.Warn("User not found")
-		return appErrors.ErrUserNotFound
+		return internal.ErrUserNotFound
 	}
 
 	err = u.userRepo.DeleteUserById(ctx, id)
