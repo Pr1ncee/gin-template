@@ -19,12 +19,8 @@ func NewHealthCheckHandler(logger *zap.Logger) *HealthCheckHandler {
 // @Description Returns a response indicating a healthy application
 // @Tags health-check
 // @Produce json
-// @Success 200 {object} HealthCheckResponse
+// @Success 200 {object} responses.HealthCheckResponse
 // @Router /health-check [get]
 func (h *HealthCheckHandler) HealthCheck(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Status": "success"})
-}
-
-type HealthCheckResponse struct {
-	Status string `json:"Status" example:"success"`
 }

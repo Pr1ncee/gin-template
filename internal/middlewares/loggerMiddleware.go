@@ -6,14 +6,17 @@ import (
 	"time"
 )
 
+// RequestLogger represents logger middleware that logs each request and calculates the duration of the latter.
 type RequestLogger struct {
 	logger *zap.Logger
 }
 
+// NewRequestLogger creates a new RequestLogger object.
 func NewRequestLogger(logger *zap.Logger) *RequestLogger {
 	return &RequestLogger{logger: logger}
 }
 
+// Handle implements logging functionality of each request.
 func (r *RequestLogger) Handle() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()

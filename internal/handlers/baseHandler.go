@@ -1,3 +1,8 @@
+/*
+Package handlers provides implementation of endpoints.
+
+Specifically, this file implements utils methods that help set up new handlers, handling success and error responses.
+*/
 package handlers
 
 import (
@@ -9,11 +14,13 @@ import (
 	"time"
 )
 
+// BaseHandler provides basic tools which can be used inside handlers.
 type BaseHandler struct {
 	logger  *zap.Logger
 	timeout time.Duration
 }
 
+// NewBaseHandler creates a new BaseHandler with logger and timeout value.
 func NewBaseHandler(logger *zap.Logger, timeout time.Duration) *BaseHandler {
 	return &BaseHandler{
 		logger:  logger,

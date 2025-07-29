@@ -72,7 +72,7 @@ func main() {
 	logger.Info("Repositories initialized")
 
 	authService := services.NewAuthService(*cfg, logger)
-	userService := services.NewUserService(queries, logger, *cfg, userRepo, *authService)
+	userService := services.NewUserService(userRepo, authService, logger, *cfg)
 	logger.Info("Services initialized")
 
 	healthCheckHandler := handlers.NewHealthCheckHandler(logger)

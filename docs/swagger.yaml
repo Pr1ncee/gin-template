@@ -1,11 +1,5 @@
 basePath: /api/v1
 definitions:
-  handlers.HealthCheckResponse:
-    properties:
-      Status:
-        example: success
-        type: string
-    type: object
   requests.CreateUserRequest:
     properties:
       email:
@@ -80,6 +74,12 @@ definitions:
       message:
         type: string
     type: object
+  responses.HealthCheckResponse:
+    properties:
+      Status:
+        example: success
+        type: string
+    type: object
   responses.PaginationResponse:
     properties:
       data: {}
@@ -116,7 +116,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.HealthCheckResponse'
+            $ref: '#/definitions/responses.HealthCheckResponse'
       summary: A method which indicates whether the application is healthy
       tags:
       - health-check
@@ -140,7 +140,7 @@ paths:
         name: role
         type: string
       - default: ""
-        description: first_name
+        description: first_name or last_name or email
         in: query
         name: searchTerm
         type: string
@@ -356,8 +356,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Login a user and return a pair of access and refresh token in the
-        response
+      description: Return a pair of access and refresh token in the response
       parameters:
       - description: User information
         in: body

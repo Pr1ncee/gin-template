@@ -15,13 +15,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// CacheMiddleware represents cache middleware with Redis a in-memory storage.
+// It also accepts logger and config as input fields
 type CacheMiddleware struct {
-	repo   *repositories.RedisRepository
+	repo   repositories.IRedisRepository
 	cfg    *config.Config
 	logger *zap.Logger
 }
 
-func NewCacheMiddleware(repo *repositories.RedisRepository, cfg *config.Config, logger *zap.Logger) *CacheMiddleware {
+// NewCacheMiddleware creates a new CacheMiddleware object.
+func NewCacheMiddleware(repo repositories.IRedisRepository, cfg *config.Config, logger *zap.Logger) *CacheMiddleware {
 	return &CacheMiddleware{
 		repo:   repo,
 		cfg:    cfg,
@@ -29,6 +32,8 @@ func NewCacheMiddleware(repo *repositories.RedisRepository, cfg *config.Config, 
 	}
 }
 
+// Handle implements the primary functionality of caching endpoints' responses.
+// This middleware ignores all endpoints with HTTP GET method.
 func (m *CacheMiddleware) Handle() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method != http.MethodGet {
@@ -37,7 +42,7 @@ func (m *CacheMiddleware) Handle() gin.HandlerFunc {
 		}
 
 		ctx := context.Background()
-		cacheKey := m.GenerateCacheKey(c.Request)
+		cacheKey := m.generateCacheKey(c.Request)
 
 		cached, err := m.repo.Get(ctx, cacheKey)
 		if err == nil && cached != "" {
@@ -52,14 +57,15 @@ func (m *CacheMiddleware) Handle() gin.HandlerFunc {
 
 		c.Next()
 
-		if c.Writer.Status() >= http.StatusOK || c.Writer.Status() <= http.StatusIMUsed {
+		if c.Writer.Status() >= http.StatusOK && c.Writer.Status() <= http.StatusIMUsed {
 			m.logger.Info("setting cache", zap.String("key", cacheKey))
 			_ = m.repo.Set(ctx, cacheKey, writer.Body.String(), int64(m.cfg.Redis.TTL.Seconds()))
 		}
 	}
 }
 
-func (m *CacheMiddleware) GenerateCacheKey(req *http.Request) string {
+// generateCacheKey implements a method for generating a cache key in a hash format to be saved to Redis.
+func (m *CacheMiddleware) generateCacheKey(req *http.Request) string {
 	hash := sha1.New()
 	io.WriteString(hash, req.Method+"|"+req.URL.String())
 	return "cache:" + hex.EncodeToString(hash.Sum(nil))

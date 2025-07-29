@@ -15,12 +15,19 @@ type ApiV1 struct {
 	healthCheckHandler *handlers.HealthCheckHandler
 	authService        services.IAuthService
 	userHandler        *handlers.UserHandler
-	redisRepo          *repositories.RedisRepository
+	redisRepo          repositories.IRedisRepository
 	cfg                *config.Config
 	logger             *zap.Logger
 }
 
-func NewApiV1(userHandler *handlers.UserHandler, authService services.IAuthService, healthCheckHandler *handlers.HealthCheckHandler, redisRepo *repositories.RedisRepository, cfg *config.Config, logger *zap.Logger) *ApiV1 {
+func NewApiV1(
+	userHandler *handlers.UserHandler,
+	authService services.IAuthService,
+	healthCheckHandler *handlers.HealthCheckHandler,
+	redisRepo repositories.IRedisRepository,
+	cfg *config.Config,
+	logger *zap.Logger,
+) *ApiV1 {
 	return &ApiV1{
 		userHandler:        userHandler,
 		authService:        authService,

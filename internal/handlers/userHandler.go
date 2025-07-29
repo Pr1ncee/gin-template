@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UserHandler represents a group of objects that are essential to implement all User's endpoints.
 type UserHandler struct {
 	*BaseHandler
 	userService services.IUserService
@@ -22,6 +23,7 @@ type UserHandler struct {
 	timeout     time.Duration
 }
 
+// NewUserHandler creates a new UserHandler with a particular User service, logger and timeout value.
 func NewUserHandler(userService services.IUserService, logger *zap.Logger, timeout time.Duration) *UserHandler {
 	return &UserHandler{
 		BaseHandler: NewBaseHandler(logger, timeout),
@@ -64,7 +66,7 @@ func (h *UserHandler) RefreshToken(c *gin.Context) {
 
 // Login godoc
 // @Summary Log a user in
-// @Description Login a user and return a pair of access and refresh token in the response
+// @Description Return a pair of access and refresh token in the response
 // @Tags users
 // @Accept json
 // @Produce json
@@ -136,7 +138,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Param page query int false "Page number" default(1)
 // @Param limit query int false "Items per page" default(10)
 // @Param role query string false "User Role" default()
-// @Param searchTerm query string false "first_name" or "last_name" or "email" default()
+// @Param searchTerm query string false "first_name or last_name or email" default()
 // @Success 200 {object} responses.PaginationResponse
 // @Failure 400 {object} responses.ErrorResponse
 // @Failure 500 {object} responses.ErrorResponse
@@ -284,7 +286,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		h.SendError(c, http.StatusInternalServerError, "Failed to delete the user", err)
 	}
 
-	h.SendSuccess(c, http.StatusOK, nil, "User deleted successfully")
+	h.SendSuccess(c, http.StatusAccepted, nil, "User deleted successfully")
 }
 
 // ExportUsers godoc

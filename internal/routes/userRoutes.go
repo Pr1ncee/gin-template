@@ -14,14 +14,17 @@ func UserRoutes(
 	userHandler *handlers.UserHandler,
 	authService services.IAuthService,
 ) {
+	authMiddleware := middlewares.NewAuthMiddleware(authService)
+
 	users := router.Group("/users")
 
+	// Public routes
 	users.POST("/login", userHandler.Login)
 	users.POST("/refresh", userHandler.RefreshToken)
 
 	// Routes that require authentication
 	authenticated := users.Group("")
-	authenticated.Use(middlewares.AuthMiddleware(authService))
+	authenticated.Use(authMiddleware.Handle())
 	{
 		authenticated.POST("", middlewares.RequireRole([]db.UserRole{db.UserRoleAdmin}), userHandler.CreateUser)                         // POST /api/v1/users
 		authenticated.GET("", middlewares.RequireRole([]db.UserRole{db.UserRoleUser, db.UserRoleAdmin}), userHandler.ListUsers)          // GET /api/v1/users?page=1&limit=10&role=Admin&q=test@gmail.com

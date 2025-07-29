@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// IUserRepository defines the interface for basic methods for User entity (specifically in PostgreSQL database).
 type IUserRepository interface {
 	CreateUser(ctx context.Context, user db.User) (db.User, error)
 	ListUsers(ctx context.Context, args db.ListUsersParams) ([]db.ListUsersRow, error)
@@ -17,11 +18,13 @@ type IUserRepository interface {
 	DeleteUserById(ctx context.Context, id int32) error
 }
 
+// UserRepository implements IUserRepository interface and provides high-level usable methods.
 type UserRepository struct {
 	queries *db.Queries
 	logger  *zap.Logger
 }
 
+// NewUserRepository initializes a new repository with all available queries.
 func NewUserRepository(queries *db.Queries, logger *zap.Logger) *UserRepository {
 	return &UserRepository{
 		queries: queries,
@@ -29,6 +32,7 @@ func NewUserRepository(queries *db.Queries, logger *zap.Logger) *UserRepository 
 	}
 }
 
+// CreateUser implements User creation functionality with the input schema.
 func (r *UserRepository) CreateUser(ctx context.Context, user db.User) (db.User, error) {
 	r.logger.Info("Creating new user", zap.String("email", user.Email))
 
@@ -54,6 +58,8 @@ func (r *UserRepository) CreateUser(ctx context.Context, user db.User) (db.User,
 	return createdUser, nil
 }
 
+// ListUsers returns a list of Users with the corresponding input parameters
+// such as filtering by role and searching by first and last names and email.
 func (r *UserRepository) ListUsers(ctx context.Context, args db.ListUsersParams) ([]db.ListUsersRow, error) {
 	r.logger.Info("Getting users with filters",
 		zap.Int32("limit", args.Limit),
@@ -89,6 +95,7 @@ func (r *UserRepository) ListUsers(ctx context.Context, args db.ListUsersParams)
 	return result, nil
 }
 
+// GetUserById returns a User entity by input id.
 func (r *UserRepository) GetUserById(ctx context.Context, id int32) (db.GetUserByIDRow, error) {
 	r.logger.Info("Getting user by ID", zap.Int32("user_id", id))
 
@@ -112,6 +119,7 @@ func (r *UserRepository) GetUserById(ctx context.Context, id int32) (db.GetUserB
 	return result, nil
 }
 
+// GetUserWithPasswordById returns a User entity by input id with password field in the response.
 func (r *UserRepository) GetUserWithPasswordById(ctx context.Context, id int32) (db.User, error) {
 	r.logger.Info("Getting user with password by ID", zap.Int32("user_id", id))
 
@@ -124,6 +132,7 @@ func (r *UserRepository) GetUserWithPasswordById(ctx context.Context, id int32) 
 	return user, nil
 }
 
+// CheckUserExists returns a boolean response whether a User exists in the database based on input id.
 func (r *UserRepository) CheckUserExists(ctx context.Context, id int32) (bool, error) {
 	r.logger.Info("Checking if user exists", zap.Int32("user_id", id))
 
@@ -136,6 +145,7 @@ func (r *UserRepository) CheckUserExists(ctx context.Context, id int32) (bool, e
 	return result, nil
 }
 
+// UpdateUserPartial partially updates a User.
 func (r *UserRepository) UpdateUserPartial(ctx context.Context, arg db.UpdateUserPartialParams) (db.User, error) {
 	r.logger.Info("Partially updating user", zap.Int32("user_id", arg.ID))
 
@@ -148,6 +158,7 @@ func (r *UserRepository) UpdateUserPartial(ctx context.Context, arg db.UpdateUse
 	return updatedUser, nil
 }
 
+// DeleteUserById deletes user by provided id.
 func (r *UserRepository) DeleteUserById(ctx context.Context, id int32) error {
 	r.logger.Info("Deleting user by ID", zap.Int32("user_id", id))
 

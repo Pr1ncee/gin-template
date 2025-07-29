@@ -1,3 +1,9 @@
+/*
+Package middlewares implements different kinds of middleware that are used in the application.
+
+Specifically, this file implements authentication Middleware via JWT tokens
+and also describes an authorization mechanism that validates a User's role before allowing the request to proceed.
+*/
 package middlewares
 
 import (
@@ -9,7 +15,18 @@ import (
 	"strings"
 )
 
-func AuthMiddleware(authService services.IAuthService) gin.HandlerFunc {
+// AuthMiddleware represents authentication middleware via JWT tokens.
+type AuthMiddleware struct {
+	authService services.IAuthService
+}
+
+// NewAuthMiddleware initializes a new AuthMiddleware object.
+func NewAuthMiddleware(authService services.IAuthService) *AuthMiddleware {
+	return &AuthMiddleware{authService: authService}
+}
+
+// Handle takes the incoming request and validates token in the header.
+func (a *AuthMiddleware) Handle() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")
 		if !strings.HasPrefix(auth, "Bearer ") {
@@ -17,7 +34,7 @@ func AuthMiddleware(authService services.IAuthService) gin.HandlerFunc {
 			return
 		}
 		token := strings.TrimPrefix(auth, "Bearer ")
-		claims, err := authService.ParseToken(token)
+		claims, err := a.authService.ParseToken(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
@@ -28,6 +45,8 @@ func AuthMiddleware(authService services.IAuthService) gin.HandlerFunc {
 	}
 }
 
+// RequireRole represents a method that ensures a User has sufficient permission
+// based on his role before processing the request.
 func RequireRole(roles []db.UserRole) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims, exists := c.Get("user")

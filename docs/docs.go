@@ -33,7 +33,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.HealthCheckResponse"
+                            "$ref": "#/definitions/responses.HealthCheckResponse"
                         }
                     }
                 }
@@ -79,7 +79,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "default": "",
-                        "description": "first_name",
+                        "description": "first_name or last_name or email",
                         "name": "searchTerm",
                         "in": "query"
                     }
@@ -236,7 +236,7 @@ const docTemplate = `{
         },
         "/users/login": {
             "post": {
-                "description": "Login a user and return a pair of access and refresh token in the response",
+                "description": "Return a pair of access and refresh token in the response",
                 "consumes": [
                     "application/json"
                 ],
@@ -504,15 +504,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handlers.HealthCheckResponse": {
-            "type": "object",
-            "properties": {
-                "Status": {
-                    "type": "string",
-                    "example": "success"
-                }
-            }
-        },
         "requests.CreateUserRequest": {
             "type": "object",
             "required": [
@@ -616,6 +607,15 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "responses.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "Status": {
+                    "type": "string",
+                    "example": "success"
                 }
             }
         },

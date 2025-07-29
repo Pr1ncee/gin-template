@@ -10,6 +10,7 @@ import (
 	"go.uber.org/ratelimit"
 )
 
+// RateLimiter represents rate limiter middleware that limits the amount of request sent per Client.
 type RateLimiter struct {
 	rateLimiters sync.Map
 	cfg          *config.Config
@@ -20,6 +21,7 @@ func NewRateLimiter(cfg *config.Config) *RateLimiter {
 	return &RateLimiter{cfg: cfg, rateLimiters: sync.Map{}}
 }
 
+// Handle implements rate limit functionality via Uber's ratelimit library.
 func (rl *RateLimiter) Handle() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)

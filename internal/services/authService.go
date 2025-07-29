@@ -1,3 +1,9 @@
+/*
+Package services provides methods with core business logic for different entities and domains of the application.
+
+Specifically, this file implements all necessary methods
+for authentication (token generation/validation and password generation/validation).
+*/
 package services
 
 import (
@@ -10,37 +16,41 @@ import (
 	"time"
 )
 
+// IAuthService defines the interface for actions with token and password.
 type IAuthService interface {
 	generateToken(userClaims UserClaims, issuer, subject string) (string, error)
 	GenerateAccessToken(userClaims UserClaims) (string, error)
 	GenerateRefreshToken(userClaims UserClaims) (string, error)
-	ValidateToken(tokenString string) (*JWTClaims, error)
 	ParseToken(tokenString string) (*JWTClaims, error)
 	GeneratePassword(password []byte) ([]byte, error)
 	ValidatePassword(hashedPassword, password []byte) error
 }
 
+// UserClaims defines the mandatory User information inside each generated token.
 type UserClaims struct {
 	UserID int32       `json:"user_id"`
 	Email  string      `json:"email"`
 	Role   db.UserRole `json:"role"`
 }
 
+// JWTClaims defines the mandatory information (beyond only User one) inside each generated token.
 type JWTClaims struct {
 	UserClaims
 	jwt.RegisteredClaims
 }
 
-// AuthService handles JWT token operations
+// AuthService implements IAuthService and handles JWT token operations.
 type AuthService struct {
 	cfg    config.Config
 	logger *zap.Logger
 }
 
+// NewAuthService returns AuthService with input config and logger.
 func NewAuthService(cfg config.Config, logger *zap.Logger) *AuthService {
 	return &AuthService{cfg: cfg, logger: logger}
 }
 
+// generateToken generates a JWT token based on input parameters.
 func (a *AuthService) generateToken(userClaims UserClaims, issuer, subject string) (string, error) {
 	claims := JWTClaims{
 		UserClaims: userClaims,
@@ -56,36 +66,17 @@ func (a *AuthService) generateToken(userClaims UserClaims, issuer, subject strin
 	return token.SignedString([]byte(a.cfg.Auth.JWTSecret))
 }
 
-// GenerateAccessToken generates a new access token
+// GenerateAccessToken generates a new access token.
 func (a *AuthService) GenerateAccessToken(userClaims UserClaims) (string, error) {
 	return a.generateToken(userClaims, a.cfg.Auth.TokenIssuer, "access-token")
 }
 
-// GenerateRefreshToken generates a new refresh token
+// GenerateRefreshToken generates a new refresh token.
 func (a *AuthService) GenerateRefreshToken(userClaims UserClaims) (string, error) {
 	return a.generateToken(userClaims, a.cfg.Auth.TokenIssuer, "refresh-token")
 }
 
-// ValidateToken validates and parses a JWT token
-func (a *AuthService) ValidateToken(tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, appErrors.ErrInvalidSigningMethod
-		}
-		return a.cfg.Auth.JWTSecret, nil
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*JWTClaims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, appErrors.ErrInvalidToken
-}
-
+// ParseToken validates and parses a JWT token.
 func (a *AuthService) ParseToken(tokenString string) (*JWTClaims, error) {
 	claims := &JWTClaims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
@@ -105,10 +96,12 @@ func (a *AuthService) ParseToken(tokenString string) (*JWTClaims, error) {
 	return claims, nil
 }
 
+// GeneratePassword generates a new password with pre-configured salt.
 func (a *AuthService) GeneratePassword(password []byte) ([]byte, error) {
 	return bcrypt.GenerateFromPassword(password, a.cfg.Auth.PasswordCost)
 }
 
+// ValidatePassword validates password.
 func (a *AuthService) ValidatePassword(hashedPassword, password []byte) error {
 	return bcrypt.CompareHashAndPassword(hashedPassword, password)
 }

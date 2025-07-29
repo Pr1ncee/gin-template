@@ -16,6 +16,7 @@ import (
 	"time"
 )
 
+// IUSerService defines the interface for actions for User entity.
 type IUserService interface {
 	RefreshToken(ctx context.Context, refreshToken string) (string, error)
 	Login(ctx context.Context, request requests.LoginRequest) (string, string, error)
@@ -27,23 +28,35 @@ type IUserService interface {
 	ExportUsers(ctx context.Context, args db.ListUsersParams) (bytes.Buffer, string, error)
 }
 
+// UserService defines the fields that will be used inside the endpoints including
+// logger, UserRepository for database actions, config and AuthService for authentication.
 type UserService struct {
-	queries     *db.Queries
 	logger      *zap.Logger
 	userRepo    repositories.IUserRepository
-	authService AuthService
+	authService IAuthService
 	cfg         config.Config
 }
 
-func NewUserService(queries *db.Queries, logger *zap.Logger, cfg config.Config, userRepo repositories.IUserRepository, authService AuthService) *UserService {
-	return &UserService{queries: queries, logger: logger, cfg: cfg, userRepo: userRepo, authService: authService}
+// NewUserService returns a new UserService with specified logger, config, UserRepository and AuthService.
+func NewUserService(
+	userRepo repositories.IUserRepository,
+	authService IAuthService,
+	logger *zap.Logger,
+	cfg config.Config,
+) *UserService {
+	return &UserService{logger: logger, cfg: cfg, userRepo: userRepo, authService: authService}
 }
 
+// RefreshToken refreshes an access token and returns it. The method makes sure the provided token is a refresh one.
 func (u *UserService) RefreshToken(ctx context.Context, refreshToken string) (string, error) {
 	claims, err := u.authService.ParseToken(refreshToken)
 	if err != nil {
 		u.logger.Error("Error parsing the token", zap.Error(err))
 		return "", appErrors.ErrInvalidToken
+	}
+	if claims.Subject != "refresh-token" {
+		u.logger.Error("The provided token is an access one. The token is insufficient")
+		return "", appErrors.ErrInsufficientTokenClaims
 	}
 	user, err := u.GetUser(ctx, claims.UserID)
 	if err != nil {
@@ -59,6 +72,7 @@ func (u *UserService) RefreshToken(ctx context.Context, refreshToken string) (st
 	return newRefreshToken, nil
 }
 
+// Login returns a pair of access and refresh tokens.
 func (u *UserService) Login(ctx context.Context, data requests.LoginRequest) (string, string, error) {
 	user, err := u.GetUserWithPasswordById(ctx, data.ID)
 	if err != nil {
@@ -85,6 +99,7 @@ func (u *UserService) Login(ctx context.Context, data requests.LoginRequest) (st
 	return accessToken, refreshToken, nil
 }
 
+// CreateUser creates user based on the input arguments and returns it.
 func (u *UserService) CreateUser(ctx context.Context, data requests.CreateUserRequest) (db.User, error) {
 	hashedPassword, err := u.authService.GeneratePassword([]byte(data.Password))
 
@@ -111,6 +126,8 @@ func (u *UserService) CreateUser(ctx context.Context, data requests.CreateUserRe
 	return createdUser, nil
 }
 
+// ListUsers returns a list of Users with the corresponding input parameters
+// // such as filtering by role and searching by first and last names and email.
 func (u *UserService) ListUsers(ctx context.Context, args db.ListUsersParams) ([]db.ListUsersRow, error) {
 	users, err := u.userRepo.ListUsers(ctx, db.ListUsersParams{
 		Limit:   args.Limit,
@@ -121,16 +138,19 @@ func (u *UserService) ListUsers(ctx context.Context, args db.ListUsersParams) ([
 	return users, err
 }
 
+// GetUser returns a User entity without a hashed password.
 func (u *UserService) GetUser(ctx context.Context, id int32) (db.GetUserByIDRow, error) {
 	user, err := u.userRepo.GetUserById(ctx, id)
 	return user, err
 }
 
+// GetUserWithPasswordById return a User entity with hashed password.
 func (u *UserService) GetUserWithPasswordById(ctx context.Context, id int32) (db.User, error) {
 	user, err := u.userRepo.GetUserWithPasswordById(ctx, id)
 	return user, err
 }
 
+// UpdateUser updates a User entity.
 func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.UpdateUserRequest) (db.User, error) {
 	exists, err := u.userRepo.CheckUserExists(ctx, id)
 	if err != nil {
@@ -191,6 +211,7 @@ func (u *UserService) UpdateUser(ctx context.Context, id int32, data requests.Up
 	return updatedUser, nil
 }
 
+// DeleteUser deletes a User entity by id.
 func (u *UserService) DeleteUser(ctx context.Context, id int32) error {
 	exists, err := u.userRepo.CheckUserExists(ctx, id)
 	if err != nil {
@@ -210,6 +231,7 @@ func (u *UserService) DeleteUser(ctx context.Context, id int32) error {
 	return nil
 }
 
+// ExportUsers returns a list of Users in csv format.
 func (u *UserService) ExportUsers(ctx context.Context, args db.ListUsersParams) (bytes.Buffer, string, error) {
 	users, err := u.userRepo.ListUsers(ctx, db.ListUsersParams{
 		Limit:   args.Limit,
