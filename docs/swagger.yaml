@@ -1,0 +1,429 @@
+basePath: /api/v1
+definitions:
+  requests.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      last_name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone_number:
+        type: string
+      role:
+        enum:
+        - User
+        - Admin
+        type: string
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    type: object
+  requests.LoginRequest:
+    properties:
+      id:
+        type: integer
+      password:
+        type: string
+    type: object
+  requests.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  requests.UpdateUserRequest:
+    properties:
+      current_password:
+        type: string
+      email:
+        type: string
+      first_name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      last_name:
+        maxLength: 255
+        minLength: 2
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+      phone_number:
+        type: string
+      role:
+        enum:
+        - User
+        - Admin
+        type: string
+    type: object
+  responses.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+      message:
+        type: string
+    type: object
+  responses.HealthCheckResponse:
+    properties:
+      Status:
+        example: success
+        type: string
+    type: object
+  responses.PaginationResponse:
+    properties:
+      data: {}
+      limit:
+        type: integer
+      page:
+        type: integer
+      total_count:
+        type: integer
+    type: object
+  responses.SuccessResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: andrewvs0707@gmail.com
+    name: API Support
+    url: https://linkedin.com/in/andrew-strongin-191b56243
+  description: This is GinBox application intended to save your time at every project's
+    setup routine!
+  title: Gin Box API
+  version: "1.0"
+paths:
+  /health-check:
+    get:
+      description: Returns a response indicating a healthy application
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.HealthCheckResponse'
+      summary: A method which indicates whether the application is healthy
+      tags:
+      - health-check
+  /users:
+    get:
+      description: List all users with pagination params
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: ""
+        description: User Role
+        in: query
+        name: role
+        type: string
+      - default: ""
+        description: first_name or last_name or email
+        in: query
+        name: searchTerm
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.PaginationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user and return user object in the response
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/requests.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new user
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      description: Delete a user by ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - users
+    get:
+      description: Get a user by his ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update user information
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated user information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/requests.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /users/export:
+    get:
+      description: Export users with filter parameters
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 10
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - default: ""
+        description: User Role
+        in: query
+        name: role
+        type: string
+      - default: ""
+        description: first_name
+        in: query
+        name: searchTerm
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Export users
+      tags:
+      - users
+  /users/login:
+    post:
+      consumes:
+      - application/json
+      description: Return a pair of access and refresh token in the response
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/requests.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Log a user in
+      tags:
+      - users
+  /users/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh user's token and return a new access token in the response
+      parameters:
+      - description: Refresh token
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/requests.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/responses.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Refresh user's token
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: 'Enter the token like: **Bearer YOUR_TOKEN_HERE**'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

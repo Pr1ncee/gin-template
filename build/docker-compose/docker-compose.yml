@@ -1,0 +1,58 @@
+name: gin-box
+
+services:
+  postgres:
+    image: postgres:15.1-alpine3.16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: gin-box
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    restart: always
+    command: redis-server
+    ports:
+      - "6379:6379"
+
+  core:
+    image: gin-box
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ../../prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki-service
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+volumes:
+  postgres:
+  grafana-storage:
