@@ -30,5 +30,29 @@ services:
       - postgres
       - redis
 
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ../../prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki-service
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
 volumes:
   postgres:
+  grafana-storage:

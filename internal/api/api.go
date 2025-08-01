@@ -27,7 +27,8 @@ func NewApiGroup(handler *handlers.UserHandler, apiV1 *v1.ApiV1, cfg *config.Con
 }
 
 func (a *ApiGroup) InitRouterGroups(router *gin.Engine) {
-	requestLogger := middlewares.NewRequestLogger(a.logger)
+	prometheusLogger := middlewares.NewPrometheusLogger(a.logger)
+
 	corsDefaultConfig := cors.DefaultConfig()
 	corsDefaultConfig.AllowAllOrigins = false
 	corsDefaultConfig.AllowOrigins = a.cfg.App.Origins
@@ -38,9 +39,10 @@ func (a *ApiGroup) InitRouterGroups(router *gin.Engine) {
 
 	errorMiddleware := middlewares.NewErrorHandlerMiddleware(a.logger)
 
+	prometheusLogger.Setup(router)
 	router.Use(rateLimiter.Handle())
 	router.Use(cors.Default())
-	router.Use(gin.Recovery(), requestLogger.Handle())
+	router.Use(gin.Recovery())
 	router.Use(errorMiddleware.Handle())
 	api := router.Group("/api")
 	{

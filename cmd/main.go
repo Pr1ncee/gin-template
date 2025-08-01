@@ -46,7 +46,7 @@ func main() {
 	runtime.GOMAXPROCS(cfg.App.MaxProcs)
 
 	initLogger := repositories.NewAppLogger(cfg)
-	logger := initLogger.SetUpLogger(cfg)
+	logger := initLogger.SetUpLogger()
 	logger.Info(
 		"Starting Gin Box API server...",
 		zap.String("Environment", cfg.App.Mode),

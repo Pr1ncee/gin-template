@@ -68,12 +68,12 @@ func (a *AuthService) generateToken(userClaims UserClaims, issuer, subject strin
 
 // GenerateAccessToken generates a new access token.
 func (a *AuthService) GenerateAccessToken(userClaims UserClaims) (string, error) {
-	return a.generateToken(userClaims, a.cfg.Auth.TokenIssuer, "access-token")
+	return a.generateToken(userClaims, a.cfg.App.Name, "access-token")
 }
 
 // GenerateRefreshToken generates a new refresh token.
 func (a *AuthService) GenerateRefreshToken(userClaims UserClaims) (string, error) {
-	return a.generateToken(userClaims, a.cfg.Auth.TokenIssuer, "refresh-token")
+	return a.generateToken(userClaims, a.cfg.App.Name, "refresh-token")
 }
 
 // ParseToken validates and parses a JWT token.

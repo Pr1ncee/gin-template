@@ -38,6 +38,7 @@ REDIS_DB=0
 TTL=60s
 
 LOG_LEVEL=0 // 5 = fatal, 4 = panic, 3 = dpanic, 2 = error, 1 = warn, 0 = info, -1 = debug
+LOG_LOKI_URL=http://loki:3100
 
 // The settings below are ONLY used internally by GOOSE
 GOOSE_DRIVER=postgres
@@ -63,6 +64,7 @@ type Config struct {
 }
 
 type AppConfig struct {
+	Name           string        `mapstructure:"name"`
 	Mode           string        `mapstructure:"mode"`
 	Port           int           `mapstructure:"port"`
 	ReadTimeout    time.Duration `mapstructure:"read_timeout"`
@@ -79,7 +81,6 @@ type AuthConfig struct {
 	JWTSecret       string        `mapstructure:"jwt_secret"`
 	AccessTokenTTL  time.Duration `mapstructure:"access_token_ttl"`
 	RefreshTokenTTL time.Duration `mapstructure:"refresh_token_ttl"`
-	TokenIssuer     string        `mapstructure:"token_issuer"`
 }
 
 type PostgresConfig struct {
@@ -94,7 +95,8 @@ type RedisConfig struct {
 }
 
 type LogConfig struct {
-	Level zapcore.Level `mapstructure:"level"`
+	Level   zapcore.Level `mapstructure:"level"`
+	LokiURL string        `mapstructure:"loki_url"`
 }
 
 // LoadConfigWithFile loads the configuration from a YAML file located at the given path with the provided filename.
@@ -117,6 +119,7 @@ func LoadConfigWithFile(path, filename string) (*Config, error) {
 	}
 
 	var cfg Config
+	cfg.App.Name = viper.GetString("APP_NAME")
 	cfg.App.Mode = viper.GetString("APP_MODE")
 	cfg.App.Port = viper.GetInt("APP_PORT")
 	cfg.App.ReadTimeout = viper.GetDuration("APP_READ_TIMEOUT")
@@ -131,7 +134,6 @@ func LoadConfigWithFile(path, filename string) (*Config, error) {
 	cfg.Auth.JWTSecret = viper.GetString("AUTH_JWT_SECRET_KEY")
 	cfg.Auth.AccessTokenTTL = viper.GetDuration("AUTH_JWT_ACCESS_TOKEN_TTL")
 	cfg.Auth.RefreshTokenTTL = viper.GetDuration("AUTH_JWT_REFRESH_TOKEN_TTL")
-	cfg.Auth.TokenIssuer = viper.GetString("AUTH_JWT_ISSUER")
 
 	cfg.Postgres.ConnString = viper.GetString("POSTGRES_CONN_STRING")
 
@@ -141,6 +143,7 @@ func LoadConfigWithFile(path, filename string) (*Config, error) {
 	cfg.Redis.TTL = viper.GetDuration("REDIS_TTL")
 
 	cfg.Log.Level = zapcore.Level(viper.GetInt("LOG_LEVEL"))
+	cfg.Log.LokiURL = viper.GetString("LOG_LOKI_URL")
 
 	return &cfg, nil
 }

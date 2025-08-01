@@ -2,33 +2,48 @@ package middlewares
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/zsais/go-gin-prometheus"
 	"go.uber.org/zap"
 	"time"
 )
 
-// RequestLogger represents logger middleware that logs each request and calculates the duration of the latter.
-type RequestLogger struct {
+// PrometheusLogger represents Prometheus middleware that logs each request with different metrics
+// and custom written logger middleware that calculates the duration of the requests.
+type PrometheusLogger struct {
 	logger *zap.Logger
 }
 
-// NewRequestLogger creates a new RequestLogger object.
-func NewRequestLogger(logger *zap.Logger) *RequestLogger {
-	return &RequestLogger{logger: logger}
+// NewPrometheusLogger creates a new PrometheusLogger with configured logger.
+func NewPrometheusLogger(logger *zap.Logger) *PrometheusLogger {
+	return &PrometheusLogger{logger: logger}
 }
 
-// Handle implements logging functionality of each request.
-func (r *RequestLogger) Handle() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		c.Next()
-		duration := time.Since(start)
+// Setup configures Gin compatible Prometheus application with custom logger middleware
+func (pl *PrometheusLogger) Setup(router *gin.Engine) {
+	p := ginprometheus.NewPrometheus("gin")
+	p.ReqCntURLLabelMappingFn = func(c *gin.Context) string {
+		return c.FullPath()
+	}
 
-		r.logger.Info("Incoming request",
-			zap.String("method", c.Request.Method),
-			zap.String("path", c.Request.URL.Path),
-			zap.Int("status", c.Writer.Status()),
+	// Custom middleware for zap logging
+	router.Use(func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		method := c.Request.Method
+
+		c.Next()
+
+		duration := time.Since(start)
+		status := c.Writer.Status()
+
+		pl.logger.Info("Incoming request",
+			zap.String("method", method),
+			zap.String("path", path),
+			zap.Int("status", status),
 			zap.Duration("duration", duration),
 			zap.String("client_ip", c.ClientIP()),
 		)
-	}
+	})
+
+	p.Use(router)
 }

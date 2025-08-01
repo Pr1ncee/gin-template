@@ -284,6 +284,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	err = h.userService.DeleteUser(ctx, int32(id))
 	if err != nil {
 		h.SendError(c, http.StatusInternalServerError, "Failed to delete the user", err)
+		return
 	}
 
 	h.SendSuccess(c, http.StatusAccepted, nil, "User deleted successfully")
